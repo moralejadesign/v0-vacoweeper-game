@@ -1,0 +1,9 @@
+{
+  "name": "Vacoweeper",
+  "short_name": "Vacoweeper",
+  "description": "A Minesweeper clone themed around Vaco the dog",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#4a7c3f",
+  "theme_color": "#4a7c3f"
+}
