@@ -581,8 +581,13 @@ export default function Vacoweeper() {
 
           {/* Game board */}
           <div
-            className="relative flex justify-center"
-            style={{ overflow: "auto", maxWidth: "calc(100vw - 32px)", width: "100%" }}
+            className="relative"
+            style={{
+              overflowX: "auto",
+              overflowY: "hidden",
+              width: "100%",
+              WebkitOverflowScrolling: "touch" as unknown as string,
+            }}
           >
             {/* Inner corner brackets on board area */}
             <span className="absolute pointer-events-none z-10" style={{ top: 4, left: 4, width: "8px", height: "8px", borderTop: `1px solid rgba(232,115,74,0.3)`, borderLeft: `1px solid rgba(232,115,74,0.3)` }} aria-hidden="true" />
@@ -591,12 +596,11 @@ export default function Vacoweeper() {
             <span className="absolute pointer-events-none z-10" style={{ bottom: 4, right: 4, width: "8px", height: "8px", borderBottom: `1px solid rgba(232,115,74,0.3)`, borderRight: `1px solid rgba(232,115,74,0.3)` }} aria-hidden="true" />
 
             <div
-              className="grid"
+              className="grid mx-auto"
               style={{
-                gridTemplateColumns: `repeat(${config.cols}, minmax(0, 28px))`,
+                gridTemplateColumns: `repeat(${config.cols}, 28px)`,
                 gap: 0,
                 width: `${config.cols * 28}px`,
-                maxWidth: "100%",
               }}
             >
               {board.map((row, r) =>
@@ -611,12 +615,8 @@ export default function Vacoweeper() {
                       key={`${r}-${c}`}
                       className="flex items-center justify-center cursor-pointer p-0 font-mono"
                       style={{
-                        width: "100%",
-                        aspectRatio: "1",
-                        minWidth: "24px",
-                        minHeight: "24px",
-                        maxWidth: "28px",
-                        maxHeight: "28px",
+                        width: "28px",
+                        height: "28px",
                         fontSize: "12px",
                         fontWeight: "bold",
                         lineHeight: 1,
