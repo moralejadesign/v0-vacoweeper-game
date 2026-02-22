@@ -397,10 +397,24 @@ export default function Vacoweeper() {
     gameState === "won" ? "win" : gameState === "lost" ? "loss" : isMouseDown ? "nervous" : "idle"
   const formatNum = (n: number) => String(Math.max(0, Math.min(999, n))).padStart(3, "0")
 
+  const [round, setRound] = useState(1)
+
   // Accent & border helpers
   const accent = "#E8734A"
   const borderW = "rgba(255,255,255,0.12)"
   const borderFaint = "rgba(255,255,255,0.06)"
+
+  // Fixed cell size for all difficulties -- same look everywhere
+  const CELL_SIZE = 28
+  const gridWidthPx = config.cols * CELL_SIZE
+
+  // Wrap initBoard to also increment the round counter
+  const initBoardWithRound = useCallback(() => {
+    if (gameState === "won" || gameState === "lost") {
+      setRound((prev) => prev + 1)
+    }
+    initBoard()
+  }, [initBoard, gameState])
 
   return (
     <div
@@ -409,7 +423,7 @@ export default function Vacoweeper() {
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* Outer frame with corner brackets */}
-      <div className="relative" style={{ padding: "18px" }}>
+      <div className="relative w-full" style={{ padding: "18px", maxWidth: "min(calc(100vw - 16px), 680px)" }}>
         {/* Outer corner brackets (large, orange) */}
         <CornerBrackets size={16} color={accent} thickness={1} />
         {/* Square markers at outer corners */}
@@ -446,7 +460,7 @@ export default function Vacoweeper() {
 
         {/* Main game panel */}
         <div
-          className="relative flex flex-col w-full max-w-fit"
+          className="relative flex flex-col w-full"
           style={{ background: "#0a0a0a", border: `1px solid ${borderW}` }}
         >
           {/* Inner corner brackets (slightly inset, white) */}
@@ -465,25 +479,41 @@ export default function Vacoweeper() {
                 VACOWEEPER
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Retro round counter */}
               <div
-                className="w-1.5 h-1.5 rounded-full"
+                className="relative flex items-center justify-center font-mono text-[10px] tracking-[0.15em] uppercase"
                 style={{
-                  background:
-                    gameState === "playing" ? accent
-                    : gameState === "won" ? "#4AE87A"
-                    : gameState === "lost" ? "#E84A4A"
-                    : "rgba(255,255,255,0.3)",
-                  boxShadow:
-                    gameState === "playing" ? `0 0 6px ${accent}`
-                    : gameState === "won" ? "0 0 6px #4AE87A"
-                    : gameState === "lost" ? "0 0 6px #E84A4A"
-                    : "none",
+                  border: `1px solid ${borderFaint}`,
+                  padding: "2px 6px",
+                  color: "rgba(255,255,255,0.35)",
                 }}
-              />
-              <span className="font-mono text-[10px] tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.35)" }}>
-                {gameState === "idle" ? "READY" : gameState === "playing" ? "LIVE" : gameState === "won" ? "CLEAR" : "FAIL"}
-              </span>
+              >
+                <span className="absolute pointer-events-none" style={{ top: -1, left: -1, width: "3px", height: "3px", borderTop: `1px solid ${accent}`, borderLeft: `1px solid ${accent}` }} aria-hidden="true" />
+                <span className="absolute pointer-events-none" style={{ bottom: -1, right: -1, width: "3px", height: "3px", borderBottom: `1px solid ${accent}`, borderRight: `1px solid ${accent}` }} aria-hidden="true" />
+                {"RD."}{String(round).padStart(2, "0")}
+              </div>
+              {/* Status indicator */}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background:
+                      gameState === "playing" ? accent
+                      : gameState === "won" ? "#4AE87A"
+                      : gameState === "lost" ? "#E84A4A"
+                      : "rgba(255,255,255,0.3)",
+                    boxShadow:
+                      gameState === "playing" ? `0 0 6px ${accent}`
+                      : gameState === "won" ? "0 0 6px #4AE87A"
+                      : gameState === "lost" ? "0 0 6px #E84A4A"
+                      : "none",
+                  }}
+                />
+                <span className="font-mono text-[10px] tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  {gameState === "idle" ? "READY" : gameState === "playing" ? "LIVE" : gameState === "won" ? "CLEAR" : "FAIL"}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -535,7 +565,7 @@ export default function Vacoweeper() {
             {/* Vaco face button */}
             <div className="flex items-center justify-center px-4 py-2" style={{ borderRight: `1px solid ${borderW}` }}>
               <button
-                onClick={initBoard}
+                onClick={initBoardWithRound}
                 className="relative cursor-pointer flex items-center justify-center"
                 style={{
                   background: "transparent",
@@ -586,7 +616,7 @@ export default function Vacoweeper() {
               overflowX: "auto",
               overflowY: "hidden",
               width: "100%",
-              WebkitOverflowScrolling: "touch" as unknown as string,
+              WebkitOverflowScrolling: "touch",
             }}
           >
             {/* Inner corner brackets on board area */}
@@ -598,9 +628,9 @@ export default function Vacoweeper() {
             <div
               className="grid mx-auto"
               style={{
-                gridTemplateColumns: `repeat(${config.cols}, 28px)`,
+                gridTemplateColumns: `repeat(${config.cols}, ${CELL_SIZE}px)`,
                 gap: 0,
-                width: `${config.cols * 28}px`,
+                width: `${gridWidthPx}px`,
               }}
             >
               {board.map((row, r) =>
@@ -615,8 +645,8 @@ export default function Vacoweeper() {
                       key={`${r}-${c}`}
                       className="flex items-center justify-center cursor-pointer p-0 font-mono"
                       style={{
-                        width: "28px",
-                        height: "28px",
+                        width: `${CELL_SIZE}px`,
+                        height: `${CELL_SIZE}px`,
                         fontSize: "12px",
                         fontWeight: "bold",
                         lineHeight: 1,
