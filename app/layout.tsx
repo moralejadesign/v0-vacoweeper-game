@@ -29,7 +29,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#4a7c3f",
+  themeColor: "#1a1a1a",
 }
 
 export default function RootLayout({
@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-[#4a7c3f]">
+    <html lang="en" className="bg-[#1a1a1a]">
       <body className="font-sans antialiased">
         {children}
         <Analytics />

@@ -485,15 +485,9 @@ export default function Vacoweeper() {
     <div
       className="flex flex-col items-center justify-center min-h-svh p-4 select-none"
       style={{
-        background: `
-          repeating-linear-gradient(
-            0deg,
-            #4a7c3f 0px, #4a7c3f 4px,
-            #5a8c4f 4px, #5a8c4f 8px,
-            #3a6c2f 8px, #3a6c2f 12px,
-            #4a7c3f 12px, #4a7c3f 16px
-          )
-        `,
+        backgroundImage: `url('/images/vaco-spots-bg.jpeg')`,
+        backgroundSize: "400px",
+        backgroundRepeat: "repeat",
         imageRendering: "pixelated",
       }}
       onContextMenu={(e) => e.preventDefault()}
