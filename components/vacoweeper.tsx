@@ -24,24 +24,24 @@ interface DifficultyConfig {
 }
 
 const DIFFICULTIES: Record<Difficulty, DifficultyConfig> = {
-  easy: { rows: 9, cols: 9, mines: 10, label: "Easy" },
-  medium: { rows: 16, cols: 16, mines: 40, label: "Medium" },
-  hard: { rows: 16, cols: 30, mines: 99, label: "Hard" },
+  easy: { rows: 9, cols: 9, mines: 10, label: "EASY" },
+  medium: { rows: 16, cols: 16, mines: 40, label: "MEDIUM" },
+  hard: { rows: 16, cols: 30, mines: 99, label: "HARD" },
 }
 
-const TREATS = ["🥕", "🍌", "🥦", "🪵"]
+const TREATS = ["+", "*", "~", "."]
 
 function getRandomTreat(): string {
   return TREATS[Math.floor(Math.random() * TREATS.length)]
 }
 
-// --- Pixel Art Vaco Faces (SVG-based pixel art) ---
+// --- Vaco Face (image-based) ---
 function VacoFace({ expression, size = 40 }: { expression: "idle" | "nervous" | "win" | "loss"; size?: number }) {
   const filters: Record<string, string> = {
     idle: "none",
-    nervous: "saturate(0.5) brightness(0.95)",
-    win: "brightness(1.1) saturate(1.2)",
-    loss: "grayscale(0.6) brightness(0.8)",
+    nervous: "saturate(0.5) brightness(0.85)",
+    win: "brightness(1.15) saturate(1.2)",
+    loss: "grayscale(0.7) brightness(0.6)",
   }
 
   return (
@@ -50,7 +50,7 @@ function VacoFace({ expression, size = 40 }: { expression: "idle" | "nervous" | 
       alt={`Vaco the dog - ${expression}`}
       width={size}
       height={size}
-      className="block rounded-sm"
+      className="block"
       style={{
         imageRendering: "pixelated",
         filter: filters[expression],
@@ -73,7 +73,6 @@ function createBoard(rows: number, cols: number, mines: number, firstClickRow?: 
     }))
   )
 
-  // Place mines, avoiding the first click area
   const excludeSet = new Set<string>()
   if (firstClickRow !== undefined && firstClickCol !== undefined) {
     for (let dr = -1; dr <= 1; dr++) {
@@ -97,7 +96,6 @@ function createBoard(rows: number, cols: number, mines: number, firstClickRow?: 
     }
   }
 
-  // Pick one random mine to be a golden retriever
   const minePositions: [number, number][] = []
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -109,7 +107,6 @@ function createBoard(rows: number, cols: number, mines: number, firstClickRow?: 
     board[gr][gc].isGoldenRetriever = true
   }
 
-  // Place one plastic bottle on a random non-mine tile
   const safeTiles: [number, number][] = []
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -119,10 +116,9 @@ function createBoard(rows: number, cols: number, mines: number, firstClickRow?: 
   if (safeTiles.length > 0) {
     const [br, bc] = safeTiles[Math.floor(Math.random() * safeTiles.length)]
     board[br][bc].isBottle = true
-    board[br][bc].treat = "🧴"
+    board[br][bc].treat = "B"
   }
 
-  // Calculate adjacent mine counts
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (board[r][c].isMine) continue
@@ -144,33 +140,34 @@ function createBoard(rows: number, cols: number, mines: number, firstClickRow?: 
   return board
 }
 
-// --- Number colors for adjacent counts ---
+// --- Number colors for adjacent counts (monochrome + accent) ---
 const NUMBER_COLORS: Record<number, string> = {
-  1: "#0000FF",
-  2: "#008000",
-  3: "#FF0000",
-  4: "#000080",
-  5: "#800000",
-  6: "#008080",
-  7: "#000000",
-  8: "#808080",
+  1: "#E8E8E8",
+  2: "#A0A0A0",
+  3: "#E8734A",
+  4: "#808080",
+  5: "#E8734A",
+  6: "#A0A0A0",
+  7: "#E8E8E8",
+  8: "#606060",
 }
 
 // --- Zoomies animation component ---
 function ZoomiesAnimation() {
   return (
-    <div className="relative w-full h-20 overflow-hidden my-4">
-      {[0, 1, 2, 3, 4].map((i) => (
+    <div className="relative w-full h-12 overflow-hidden my-2">
+      {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="absolute text-3xl"
+          className="absolute font-mono text-xs tracking-widest"
           style={{
-            animation: `zoomie 1.5s ease-in-out infinite`,
-            animationDelay: `${i * 0.3}s`,
-            top: `${10 + Math.sin(i * 1.5) * 20}px`,
+            animation: `zoomie 2s ease-in-out infinite`,
+            animationDelay: `${i * 0.5}s`,
+            top: `${4 + Math.sin(i * 1.5) * 14}px`,
+            color: "#E8E8E8",
           }}
         >
-          🐕
+          {'>>VACO>>'}
         </div>
       ))}
     </div>
@@ -193,11 +190,9 @@ export default function Vacoweeper() {
 
   const config = DIFFICULTIES[difficulty]
 
-  // Count flags
   const flagCount = board.flat().filter((c) => c.state === "flagged").length
   const pillsRemaining = config.mines - flagCount
 
-  // Initialize board
   const initBoard = useCallback(() => {
     const newBoard = createBoard(config.rows, config.cols, config.mines)
     setBoard(newBoard)
@@ -216,7 +211,6 @@ export default function Vacoweeper() {
     initBoard()
   }, [initBoard])
 
-  // Timer
   useEffect(() => {
     if (gameState === "playing") {
       timerRef.current = setInterval(() => {
@@ -233,7 +227,6 @@ export default function Vacoweeper() {
     }
   }, [gameState])
 
-  // Check win condition
   const checkWin = useCallback(
     (currentBoard: Cell[][]) => {
       for (let r = 0; r < config.rows; r++) {
@@ -247,7 +240,6 @@ export default function Vacoweeper() {
     [config]
   )
 
-  // Flood fill reveal
   const floodReveal = useCallback(
     (boardCopy: Cell[][], r: number, c: number) => {
       if (r < 0 || r >= config.rows || c < 0 || c >= config.cols) return
@@ -272,7 +264,6 @@ export default function Vacoweeper() {
     [config]
   )
 
-  // Left click: reveal
   const handleCellClick = useCallback(
     (r: number, c: number) => {
       if (gameState === "won" || gameState === "lost") return
@@ -282,7 +273,6 @@ export default function Vacoweeper() {
 
       let currentBoard = board.map((row) => row.map((cell) => ({ ...cell })))
 
-      // On first click, regenerate board to ensure safe start
       if (firstClick) {
         currentBoard = createBoard(config.rows, config.cols, config.mines, r, c)
         setFirstClick(false)
@@ -292,9 +282,7 @@ export default function Vacoweeper() {
       }
 
       if (currentBoard[r][c].isMine) {
-        // Game over
         currentBoard[r][c].state = "revealed"
-        // Reveal all mines
         for (let rr = 0; rr < config.rows; rr++) {
           for (let cc = 0; cc < config.cols; cc++) {
             if (currentBoard[rr][cc].isMine) {
@@ -318,7 +306,6 @@ export default function Vacoweeper() {
     [board, gameState, firstClick, config, floodReveal, checkWin]
   )
 
-  // Right click: flag
   const handleCellRightClick = useCallback(
     (e: React.MouseEvent, r: number, c: number) => {
       e.preventDefault()
@@ -342,13 +329,11 @@ export default function Vacoweeper() {
     [board, gameState]
   )
 
-  // Touch long-press handlers for mobile flagging
   const handleTouchStart = useCallback(
     (r: number, c: number) => {
       longPressTriggeredRef.current = false
       longPressRef.current = setTimeout(() => {
         longPressTriggeredRef.current = true
-        // Simulate right-click flag
         if (gameState === "won" || gameState === "lost") return
         const cell = board[r][c]
         if (cell.state === "revealed") return
@@ -379,11 +364,9 @@ export default function Vacoweeper() {
     [handleCellClick]
   )
 
-  // Determine face expression
   const faceExpression =
     gameState === "won" ? "win" : gameState === "lost" ? "loss" : isMouseDown ? "nervous" : "idle"
 
-  // Format number for display
   const formatNum = (n: number) => String(Math.max(0, Math.min(999, n))).padStart(3, "0")
 
   return (
@@ -397,143 +380,157 @@ export default function Vacoweeper() {
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Title */}
-      <h1
-        className="text-2xl md:text-4xl font-bold mb-4 tracking-wider text-center"
-        style={{
-          fontFamily: "monospace",
-          color: "#fff",
-          textShadow: "2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000",
-        }}
-      >
-        VACOWEEPER
-      </h1>
-
-      {/* Difficulty selector */}
-      <div className="flex gap-2 mb-4">
-        {(Object.keys(DIFFICULTIES) as Difficulty[]).map((d) => (
-          <button
-            key={d}
-            onClick={() => setDifficulty(d)}
-            className="px-3 py-1.5 text-xs md:text-sm font-bold cursor-pointer transition-colors"
-            style={{
-              fontFamily: "monospace",
-              background: difficulty === d ? "#000080" : "#C0C0C0",
-              color: difficulty === d ? "#fff" : "#000",
-              border: difficulty === d
-                ? "2px inset #808080"
-                : "2px outset #fff",
-              minHeight: "44px",
-              minWidth: "60px",
-            }}
-          >
-            {DIFFICULTIES[d].label}
-          </button>
-        ))}
-      </div>
-
-      {/* Game container */}
+      {/* Main game panel */}
       <div
+        className="flex flex-col w-full max-w-fit"
         style={{
-          background: "#C0C0C0",
-          border: "3px outset #fff",
-          padding: "6px",
+          background: "#0a0a0a",
+          border: "1px solid rgba(255,255,255,0.15)",
         }}
       >
-        {/* Header bar */}
+        {/* Title bar */}
         <div
-          className="flex items-center justify-between mb-1.5"
-          style={{
-            background: "#C0C0C0",
-            border: "2px inset #808080",
-            padding: "4px 6px",
-          }}
+          className="flex items-center justify-between px-4 py-3"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="font-mono text-[10px] tracking-[0.2em] uppercase"
+              style={{ color: "rgba(255,255,255,0.4)" }}
+            >
+              {'//PROJECT:'}
+            </span>
+            <h1
+              className="font-mono text-lg md:text-2xl font-bold tracking-[0.15em] uppercase"
+              style={{ color: "#E8E8E8" }}
+            >
+              VACOWEEPER
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: gameState === "playing" ? "#E8734A" : gameState === "won" ? "#4AE87A" : gameState === "lost" ? "#E84A4A" : "rgba(255,255,255,0.3)",
+              }}
+            />
+            <span
+              className="font-mono text-[10px] tracking-widest uppercase"
+              style={{ color: "rgba(255,255,255,0.4)" }}
+            >
+              {gameState === "idle" ? "READY" : gameState === "playing" ? "LIVE" : gameState === "won" ? "CLEAR" : "FAIL"}
+            </span>
+          </div>
+        </div>
+
+        {/* Difficulty selector row */}
+        <div
+          className="flex items-center"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
+        >
+          {(Object.keys(DIFFICULTIES) as Difficulty[]).map((d, i) => (
+            <button
+              key={d}
+              onClick={() => setDifficulty(d)}
+              className="flex-1 py-3 font-mono text-xs md:text-sm tracking-[0.15em] uppercase cursor-pointer transition-colors"
+              style={{
+                background: difficulty === d ? "rgba(232,115,74,0.15)" : "transparent",
+                color: difficulty === d ? "#E8734A" : "rgba(255,255,255,0.4)",
+                borderRight: i < 2 ? "1px solid rgba(255,255,255,0.15)" : "none",
+                borderBottom: difficulty === d ? "2px solid #E8734A" : "2px solid transparent",
+                minHeight: "48px",
+              }}
+            >
+              {DIFFICULTIES[d].label}
+            </button>
+          ))}
+        </div>
+
+        {/* Stats row: pills | face | timer */}
+        <div
+          className="flex items-center"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
         >
           {/* Mine counter */}
           <div
-            className="flex items-center gap-1.5"
-            style={{
-              background: "#000",
-              padding: "2px 6px",
-              border: "1px inset #808080",
-              fontFamily: "monospace",
-              color: "#FF0000",
-              fontSize: "20px",
-              fontWeight: "bold",
-              letterSpacing: "2px",
-              minWidth: "70px",
-            }}
+            className="flex-1 flex flex-col items-center justify-center py-3"
+            style={{ borderRight: "1px solid rgba(255,255,255,0.15)" }}
           >
-            <span className="text-sm" style={{ color: "#fff" }}>
-              {"💊"}
+            <span
+              className="font-mono text-[10px] tracking-[0.15em] uppercase"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              PILLS
             </span>
-            {formatNum(pillsRemaining)}
+            <span
+              className="font-mono text-xl md:text-2xl font-bold tracking-[0.2em]"
+              style={{ color: "#E8E8E8" }}
+            >
+              {formatNum(pillsRemaining)}
+            </span>
           </div>
 
           {/* Vaco face button */}
-          <button
-            onClick={initBoard}
-            className="cursor-pointer flex items-center justify-center"
-            style={{
-              background: "#C0C0C0",
-              border: "2px outset #fff",
-              padding: "2px",
-              width: "48px",
-              height: "48px",
-              minWidth: "48px",
-              minHeight: "48px",
-            }}
-            onMouseDown={() => setIsMouseDown(true)}
-            onMouseUp={() => setIsMouseDown(false)}
-            onMouseLeave={() => setIsMouseDown(false)}
-            aria-label="New game"
+          <div
+            className="flex items-center justify-center px-4 py-2"
+            style={{ borderRight: "1px solid rgba(255,255,255,0.15)" }}
           >
-            <VacoFace expression={faceExpression} />
-          </button>
+            <button
+              onClick={initBoard}
+              className="cursor-pointer flex items-center justify-center"
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.2)",
+                padding: "3px",
+                width: "52px",
+                height: "52px",
+                minWidth: "48px",
+                minHeight: "48px",
+              }}
+              onMouseDown={() => setIsMouseDown(true)}
+              onMouseUp={() => setIsMouseDown(false)}
+              onMouseLeave={() => setIsMouseDown(false)}
+              aria-label="New game"
+            >
+              <VacoFace expression={faceExpression} size={44} />
+            </button>
+          </div>
 
           {/* Timer */}
-          <div
-            className="flex items-center gap-1.5"
-            style={{
-              background: "#000",
-              padding: "2px 6px",
-              border: "1px inset #808080",
-              fontFamily: "monospace",
-              color: "#FF0000",
-              fontSize: "20px",
-              fontWeight: "bold",
-              letterSpacing: "2px",
-              minWidth: "70px",
-            }}
-          >
-            <span className="text-sm" style={{ color: "#fff" }}>
-              {"🐾"}
+          <div className="flex-1 flex flex-col items-center justify-center py-3">
+            <span
+              className="font-mono text-[10px] tracking-[0.15em] uppercase"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              TIME
             </span>
-            {formatNum(timer)}
+            <span
+              className="font-mono text-xl md:text-2xl font-bold tracking-[0.2em]"
+              style={{ color: "#E8E8E8" }}
+            >
+              {formatNum(timer)}
+            </span>
           </div>
         </div>
 
         {/* Score indicator */}
         {score > 0 && (
           <div
-            className="text-center mb-1"
+            className="flex items-center justify-center py-2 font-mono text-[11px] tracking-[0.15em] uppercase"
             style={{
-              fontFamily: "monospace",
-              fontSize: "12px",
-              color: "#000080",
-              fontWeight: "bold",
+              color: "#E8734A",
+              borderBottom: "1px solid rgba(255,255,255,0.15)",
             }}
           >
-            {"🧴"} Bottle Bonus: +{score} pts
+            {'BOTTLE BONUS: +'}{score}{' PTS'}
           </div>
         )}
 
         {/* Game board */}
         <div
           style={{
-            border: "2px inset #808080",
             overflow: "auto",
-            maxWidth: "calc(100vw - 40px)",
+            maxWidth: "calc(100vw - 32px)",
           }}
         >
           <div
@@ -545,161 +542,179 @@ export default function Vacoweeper() {
             }}
           >
             {board.map((row, r) =>
-              row.map((cell, c) => (
-                <button
-                  key={`${r}-${c}`}
-                  className="flex items-center justify-center cursor-pointer p-0"
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1",
-                    minWidth: "24px",
-                    minHeight: "24px",
-                    maxWidth: "28px",
-                    maxHeight: "28px",
-                    fontFamily: "monospace",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    lineHeight: 1,
-                    background:
-                      cell.state === "revealed" ? "#D0D0D0" : "#C0C0C0",
-                    border:
-                      cell.state === "revealed"
-                        ? "1px solid #808080"
-                        : "2px outset #fff",
-                    color: NUMBER_COLORS[cell.adjacentMines] || "#000",
-                    imageRendering: "pixelated",
-                  }}
-                  onClick={() => handleCellClickWrapper(r, c)}
-                  onContextMenu={(e) => handleCellRightClick(e, r, c)}
-                  onMouseDown={() => {
-                    if (cell.state === "hidden") setIsMouseDown(true)
-                  }}
-                  onMouseUp={() => setIsMouseDown(false)}
-                  onMouseLeave={() => setIsMouseDown(false)}
-                  onTouchStart={() => handleTouchStart(r, c)}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchCancel={handleTouchEnd}
-                  aria-label={`Cell ${r}, ${c}${cell.state === "flagged" ? " flagged" : ""}`}
-                >
-                  {cell.state === "flagged" && (
-                    <span className="text-xs md:text-sm">{"🐕"}</span>
-                  )}
-                  {cell.state === "revealed" && cell.isMine && (
-                    <span className="text-xs md:text-sm">
-                      {cell.isGoldenRetriever ? "🐕" : "💊"}
-                    </span>
-                  )}
-                  {cell.state === "revealed" && !cell.isMine && (
-                    <>
-                      {cell.adjacentMines > 0 ? (
-                        <span>{cell.adjacentMines}</span>
-                      ) : (
-                        <span className="text-xs md:text-sm opacity-60">{cell.treat}</span>
-                      )}
-                    </>
-                  )}
-                </button>
-              ))
+              row.map((cell, c) => {
+                const isRevealed = cell.state === "revealed"
+                const isFlagged = cell.state === "flagged"
+                const isMine = cell.isMine
+                const isHitMine = isRevealed && isMine
+
+                return (
+                  <button
+                    key={`${r}-${c}`}
+                    className="flex items-center justify-center cursor-pointer p-0 font-mono"
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1",
+                      minWidth: "24px",
+                      minHeight: "24px",
+                      maxWidth: "28px",
+                      maxHeight: "28px",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      lineHeight: 1,
+                      background: isHitMine
+                        ? "rgba(232,74,74,0.2)"
+                        : isRevealed
+                          ? "rgba(255,255,255,0.03)"
+                          : "rgba(255,255,255,0.06)",
+                      border: isRevealed
+                        ? "1px solid rgba(255,255,255,0.05)"
+                        : "1px solid rgba(255,255,255,0.12)",
+                      color: NUMBER_COLORS[cell.adjacentMines] || "#E8E8E8",
+                      transition: "background 0.1s ease",
+                    }}
+                    onClick={() => handleCellClickWrapper(r, c)}
+                    onContextMenu={(e) => handleCellRightClick(e, r, c)}
+                    onMouseDown={() => {
+                      if (cell.state === "hidden") setIsMouseDown(true)
+                    }}
+                    onMouseUp={() => setIsMouseDown(false)}
+                    onMouseLeave={() => setIsMouseDown(false)}
+                    onTouchStart={() => handleTouchStart(r, c)}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
+                    aria-label={`Cell ${r}, ${c}${isFlagged ? " flagged" : ""}`}
+                  >
+                    {isFlagged && (
+                      <span style={{ color: "#E8734A" }}>{"F"}</span>
+                    )}
+                    {isRevealed && isMine && (
+                      <span style={{ color: cell.isGoldenRetriever ? "#FFD700" : "#E84A4A" }}>
+                        {cell.isGoldenRetriever ? "G" : "X"}
+                      </span>
+                    )}
+                    {isRevealed && !isMine && (
+                      <>
+                        {cell.adjacentMines > 0 ? (
+                          <span>{cell.adjacentMines}</span>
+                        ) : cell.isBottle ? (
+                          <span style={{ color: "#E8734A" }}>{"B"}</span>
+                        ) : (
+                          <span style={{ color: "rgba(255,255,255,0.08)" }}>{cell.treat}</span>
+                        )}
+                      </>
+                    )}
+                  </button>
+                )
+              })
             )}
           </div>
         </div>
-      </div>
 
-      {/* Long press hint for mobile */}
-      <p
-        className="mt-3 text-center text-xs md:hidden"
-        style={{
-          fontFamily: "monospace",
-          color: "#fff",
-          textShadow: "1px 1px 0px #000",
-        }}
-      >
-        Tap to reveal. Long press to flag.
-      </p>
+        {/* Mobile hint footer */}
+        <div
+          className="py-2 text-center font-mono text-[10px] tracking-[0.15em] uppercase md:hidden"
+          style={{
+            color: "rgba(255,255,255,0.3)",
+            borderTop: "1px solid rgba(255,255,255,0.15)",
+          }}
+        >
+          TAP TO REVEAL / LONG PRESS TO FLAG
+        </div>
+      </div>
 
       {/* Win / Loss Overlay */}
       {(gameState === "won" || gameState === "lost") && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ background: "rgba(0,0,0,0.7)" }}
+          style={{ background: "rgba(0,0,0,0.85)" }}
           onClick={initBoard}
         >
           <div
-            className="flex flex-col items-center gap-4 p-6 mx-4 max-w-sm w-full"
+            className="flex flex-col items-center mx-4 max-w-sm w-full"
             style={{
-              background: "#C0C0C0",
-              border: "3px outset #fff",
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,255,255,0.15)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Title bar */}
+            {/* Overlay title bar */}
             <div
-              className="w-full text-center py-1 font-bold"
+              className="w-full text-center py-3 font-mono text-xs tracking-[0.2em] uppercase font-bold"
               style={{
-                background: gameState === "won" ? "#000080" : "#800000",
-                color: "#fff",
-                fontFamily: "monospace",
-                fontSize: "14px",
+                background: gameState === "won" ? "rgba(74,232,122,0.1)" : "rgba(232,74,74,0.1)",
+                color: gameState === "won" ? "#4AE87A" : "#E84A4A",
+                borderBottom: `1px solid ${gameState === "won" ? "rgba(74,232,122,0.2)" : "rgba(232,74,74,0.2)"}`,
               }}
             >
-              {gameState === "won" ? "VICTORY!" : "GAME OVER"}
+              {gameState === "won" ? "// VICTORY" : "// GAME OVER"}
             </div>
 
             {/* Face */}
-            <div className="flex justify-center">
-              <VacoFace expression={gameState === "won" ? "win" : "loss"} size={120} />
+            <div className="flex justify-center py-6">
+              <div style={{ border: "1px solid rgba(255,255,255,0.15)", padding: "4px" }}>
+                <VacoFace expression={gameState === "won" ? "win" : "loss"} size={100} />
+              </div>
             </div>
 
             {/* Message */}
             {gameState === "won" && (
-              <>
+              <div
+                className="w-full px-6 pb-4"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
+              >
                 <ZoomiesAnimation />
                 <p
-                  className="text-center font-bold text-sm md:text-base"
-                  style={{ fontFamily: "monospace", color: "#008000" }}
+                  className="text-center font-mono text-xs tracking-[0.1em] uppercase py-2"
+                  style={{ color: "#4AE87A" }}
                 >
-                  All treats collected! No medicine today!
+                  ALL TREATS COLLECTED. NO MEDICINE TODAY.
                 </p>
                 {score > 0 && (
                   <p
-                    className="text-center text-xs"
-                    style={{ fontFamily: "monospace", color: "#000080" }}
+                    className="text-center font-mono text-[10px] tracking-[0.1em] uppercase"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
                   >
-                    Bottle Bonus: +{score} pts | Time: {timer}s
+                    {'BOTTLE BONUS: +'}{score}{' PTS | TIME: '}{timer}{'S'}
                   </p>
                 )}
-              </>
+              </div>
             )}
 
             {gameState === "lost" && (
-              <>
-                <div className="text-4xl animate-bounce">
-                  {hitGoldenRetriever ? "🐕" : "💊"}
+              <div
+                className="w-full px-6 pb-4"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
+              >
+                <div
+                  className="text-center font-mono text-2xl py-3 animate-bounce"
+                  style={{ color: "#E84A4A" }}
+                >
+                  {hitGoldenRetriever ? "G" : "X"}
                 </div>
                 <p
-                  className="text-center font-bold text-sm md:text-base"
-                  style={{ fontFamily: "monospace", color: "#800000" }}
+                  className="text-center font-mono text-xs tracking-[0.1em] uppercase py-2"
+                  style={{ color: "#E84A4A" }}
                 >
                   {hitGoldenRetriever
-                    ? "Vaco froze in horror... A GOLDEN RETRIEVER!"
-                    : "Vaco got his medicine... he is NOT happy."}
+                    ? "VACO FROZE IN HORROR... A GOLDEN RETRIEVER!"
+                    : "VACO GOT HIS MEDICINE... HE IS NOT HAPPY."}
                 </p>
-              </>
+              </div>
             )}
 
-            {/* Play again */}
+            {/* Play again button */}
             <button
               onClick={initBoard}
-              className="px-6 py-2 font-bold cursor-pointer text-sm"
+              className="w-full py-3 font-mono text-xs tracking-[0.2em] uppercase font-bold cursor-pointer transition-colors"
               style={{
-                fontFamily: "monospace",
-                background: "#C0C0C0",
-                border: "2px outset #fff",
-                color: "#000",
-                minHeight: "44px",
+                background: "rgba(232,115,74,0.1)",
+                color: "#E8734A",
+                borderTop: "1px solid rgba(232,115,74,0.2)",
+                minHeight: "48px",
               }}
             >
-              Play Again
+              {'PLAY AGAIN >'}
             </button>
           </div>
         </div>
@@ -708,11 +723,11 @@ export default function Vacoweeper() {
       {/* Zoomies keyframe animation */}
       <style>{`
         @keyframes zoomie {
-          0% { left: -40px; transform: scaleX(1); }
-          45% { left: calc(100% + 40px); transform: scaleX(1); }
-          50% { left: calc(100% + 40px); transform: scaleX(-1); }
-          95% { left: -40px; transform: scaleX(-1); }
-          100% { left: -40px; transform: scaleX(1); }
+          0% { left: -60px; transform: scaleX(1); }
+          45% { left: calc(100% + 60px); transform: scaleX(1); }
+          50% { left: calc(100% + 60px); transform: scaleX(-1); }
+          95% { left: -60px; transform: scaleX(-1); }
+          100% { left: -60px; transform: scaleX(1); }
         }
       `}</style>
     </div>
