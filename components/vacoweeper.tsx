@@ -36,122 +36,27 @@ function getRandomTreat(): string {
 }
 
 // --- Pixel Art Vaco Faces (SVG-based pixel art) ---
-function VacoFace({ expression }: { expression: "idle" | "nervous" | "win" | "loss" }) {
-  // 16x16 pixel art grid rendered as SVG
-  const size = 16
-  const pixelSize = 2.5
-
-  // Color palette
-  const W = "#FFFFFF" // white
-  const B = "#000000" // black
-  const P = "#FFB6C1" // pink (tongue/mouth)
-  const G = "#9ACD32" // yellow-green (collar)
-  const Y = "#FFD700" // yellow (sweat)
-  const R = "#FF4444" // red
-  const T = "transparent"
-  const D = "#CCCCCC" // grey
-
-  type PixelGrid = string[][]
-
-  const faces: Record<string, PixelGrid> = {
-    idle: [
-      [T, T, T, B, B, B, B, B, B, B, B, B, B, T, T, T],
-      [T, T, B, W, W, W, W, W, W, W, W, W, W, B, T, T],
-      [T, B, W, W, W, W, W, W, W, W, W, W, W, W, B, T],
-      [B, W, W, B, B, W, W, W, W, W, W, B, B, W, W, B],
-      [B, W, W, B, B, W, W, B, B, W, W, B, B, W, W, B],
-      [B, W, W, W, W, W, B, W, W, B, W, W, W, W, W, B],
-      [B, W, W, W, W, W, W, W, W, W, W, W, W, W, W, B],
-      [B, W, W, W, B, B, B, B, B, B, B, B, W, W, W, B],
-      [B, W, W, B, W, W, W, W, W, W, W, W, B, W, W, B],
-      [B, W, W, B, W, P, P, P, P, P, P, W, B, W, W, B],
-      [T, B, W, B, W, W, P, P, P, P, W, W, B, W, B, T],
-      [T, B, W, W, B, W, W, W, W, W, W, B, W, W, B, T],
-      [T, T, B, W, W, B, B, B, B, B, B, W, W, B, T, T],
-      [T, T, T, B, G, G, G, G, G, G, G, G, B, T, T, T],
-      [T, T, T, B, G, Y, G, G, G, G, Y, G, B, T, T, T],
-      [T, T, T, T, B, B, B, B, B, B, B, B, T, T, T, T],
-    ],
-    nervous: [
-      [T, T, T, B, B, B, B, B, B, B, B, B, B, T, T, T],
-      [T, T, B, W, W, W, W, W, W, W, W, W, W, B, T, T],
-      [T, B, W, W, W, W, W, W, W, W, W, W, W, W, B, T],
-      [B, W, W, B, B, W, W, W, W, W, W, B, B, W, W, B],
-      [B, W, W, B, B, W, W, B, B, W, W, B, B, W, W, B],
-      [B, W, W, W, W, W, B, W, W, B, W, W, W, W, W, B],
-      [B, Y, W, W, W, W, W, W, W, W, W, W, W, W, Y, B],
-      [B, Y, W, W, W, W, W, W, W, W, W, W, W, W, Y, B],
-      [B, W, W, W, W, B, B, B, B, B, B, W, W, W, W, B],
-      [B, W, W, W, B, D, D, D, D, D, D, B, W, W, W, B],
-      [T, B, W, W, B, D, D, D, D, D, D, B, W, W, B, T],
-      [T, B, W, W, W, B, B, B, B, B, B, W, W, W, B, T],
-      [T, T, B, W, W, W, W, W, W, W, W, W, W, B, T, T],
-      [T, T, T, B, G, G, G, G, G, G, G, G, B, T, T, T],
-      [T, T, T, B, G, Y, G, G, G, G, Y, G, B, T, T, T],
-      [T, T, T, T, B, B, B, B, B, B, B, B, T, T, T, T],
-    ],
-    win: [
-      [T, T, T, B, B, B, B, B, B, B, B, B, B, T, T, T],
-      [T, T, B, W, W, W, W, W, W, W, W, W, W, B, T, T],
-      [T, B, W, W, W, W, W, W, W, W, W, W, W, W, B, T],
-      [B, W, W, W, W, W, W, W, W, W, W, W, W, W, W, B],
-      [B, W, W, B, W, B, W, B, B, W, B, W, B, W, W, B],
-      [B, W, W, W, B, W, W, W, W, W, W, B, W, W, W, B],
-      [B, W, W, W, W, W, W, W, W, W, W, W, W, W, W, B],
-      [B, W, W, B, B, B, B, B, B, B, B, B, B, W, W, B],
-      [B, W, B, W, W, W, W, W, W, W, W, W, W, B, W, B],
-      [B, W, B, W, P, P, P, P, P, P, P, P, W, B, W, B],
-      [T, B, W, B, W, P, P, P, P, P, P, W, B, W, B, T],
-      [T, B, W, W, B, W, P, P, P, P, W, B, W, W, B, T],
-      [T, T, B, W, W, B, B, B, B, B, B, W, W, B, T, T],
-      [T, T, T, B, G, G, G, G, G, G, G, G, B, T, T, T],
-      [T, T, T, B, G, Y, G, G, G, G, Y, G, B, T, T, T],
-      [T, T, T, T, B, B, B, B, B, B, B, B, T, T, T, T],
-    ],
-    loss: [
-      [T, T, T, B, B, B, B, B, B, B, B, B, B, T, T, T],
-      [T, T, B, W, W, W, W, W, W, W, W, W, W, B, T, T],
-      [T, B, W, W, W, W, W, W, W, W, W, W, W, W, B, T],
-      [B, W, W, W, W, W, W, W, W, W, W, W, W, W, W, B],
-      [B, W, W, B, W, B, W, B, B, W, B, W, B, W, W, B],
-      [B, W, W, W, B, W, W, W, W, W, W, B, W, W, W, B],
-      [B, W, W, W, W, W, W, W, W, W, W, W, W, W, W, B],
-      [B, R, W, W, W, W, W, W, W, W, W, W, W, W, R, B],
-      [B, R, W, W, W, W, B, B, B, B, W, W, W, W, R, B],
-      [B, W, W, W, W, B, W, W, W, W, B, W, W, W, W, B],
-      [T, B, W, W, B, W, W, W, W, W, W, B, W, W, B, T],
-      [T, B, W, W, B, W, W, R, R, W, W, B, W, W, B, T],
-      [T, T, B, W, W, B, B, B, B, B, B, W, W, B, T, T],
-      [T, T, T, B, G, G, G, G, G, G, G, G, B, T, T, T],
-      [T, T, T, B, G, Y, G, G, G, G, Y, G, B, T, T, T],
-      [T, T, T, T, B, B, B, B, B, B, B, B, T, T, T, T],
-    ],
+function VacoFace({ expression, size = 40 }: { expression: "idle" | "nervous" | "win" | "loss"; size?: number }) {
+  const filters: Record<string, string> = {
+    idle: "none",
+    nervous: "saturate(0.5) brightness(0.95)",
+    win: "brightness(1.1) saturate(1.2)",
+    loss: "grayscale(0.6) brightness(0.8)",
   }
 
-  const grid = faces[expression]
-
   return (
-    <svg
-      width={size * pixelSize}
-      height={size * pixelSize}
-      viewBox={`0 0 ${size * pixelSize} ${size * pixelSize}`}
-      className="block"
-    >
-      {grid.map((row, y) =>
-        row.map((color, x) =>
-          color !== "transparent" ? (
-            <rect
-              key={`${x}-${y}`}
-              x={x * pixelSize}
-              y={y * pixelSize}
-              width={pixelSize}
-              height={pixelSize}
-              fill={color}
-            />
-          ) : null
-        )
-      )}
-    </svg>
+    <img
+      src="/images/vaco-face.jpeg"
+      alt={`Vaco the dog - ${expression}`}
+      width={size}
+      height={size}
+      className="block rounded-sm"
+      style={{
+        imageRendering: "pixelated",
+        filter: filters[expression],
+        transition: "filter 0.2s ease",
+      }}
+    />
   )
 }
 
@@ -741,8 +646,8 @@ export default function Vacoweeper() {
             </div>
 
             {/* Face */}
-            <div className="flex justify-center" style={{ transform: "scale(3)" }}>
-              <VacoFace expression={gameState === "won" ? "win" : "loss"} />
+            <div className="flex justify-center">
+              <VacoFace expression={gameState === "won" ? "win" : "loss"} size={120} />
             </div>
 
             {/* Message */}
