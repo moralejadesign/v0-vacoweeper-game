@@ -373,10 +373,7 @@ export default function Vacoweeper() {
     <div
       className="flex flex-col items-center justify-center min-h-svh p-4 select-none"
       style={{
-        backgroundImage: `url('/images/vaco-spots-bg.jpeg')`,
-        backgroundSize: "400px",
-        backgroundRepeat: "repeat",
-        imageRendering: "pixelated",
+        backgroundColor: "#0a0a0a",
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -528,17 +525,20 @@ export default function Vacoweeper() {
 
         {/* Game board */}
         <div
+          className="flex justify-center"
           style={{
             overflow: "auto",
             maxWidth: "calc(100vw - 32px)",
+            width: "100%",
           }}
         >
           <div
             className="grid"
             style={{
-              gridTemplateColumns: `repeat(${config.cols}, minmax(24px, 28px))`,
+              gridTemplateColumns: `repeat(${config.cols}, minmax(0, 28px))`,
               gap: 0,
-              width: "fit-content",
+              width: `${config.cols * 28}px`,
+              maxWidth: "100%",
             }}
           >
             {board.map((row, r) =>
