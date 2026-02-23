@@ -42,6 +42,48 @@ const NUMBER_COLORS: Record<number, string> = {
 const CELL_SIZE = 28
 
 // ---------------------------------------------------------------------------
+// Haptic feedback helper
+// ---------------------------------------------------------------------------
+function haptic(pattern: number | number[] = 12) {
+  try { navigator?.vibrate?.(pattern) } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Moo sound helper — generates a short synth "moo" via Web Audio API
+// ---------------------------------------------------------------------------
+function playMoo() {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = "sawtooth"
+    osc.frequency.setValueAtTime(120, ctx.currentTime)
+    osc.frequency.linearRampToValueAtTime(85, ctx.currentTime + 0.35)
+    osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.55)
+    gain.gain.setValueAtTime(0.25, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.1)
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.65)
+    // Second harmonic for richness
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = "sine"
+    osc2.frequency.setValueAtTime(240, ctx.currentTime)
+    osc2.frequency.linearRampToValueAtTime(170, ctx.currentTime + 0.35)
+    osc2.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.55)
+    gain2.gain.setValueAtTime(0.08, ctx.currentTime)
+    gain2.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6)
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+    osc2.start(ctx.currentTime)
+    osc2.stop(ctx.currentTime + 0.65)
+  } catch {}
+}
+
+// ---------------------------------------------------------------------------
 // VacoFace — uses the attached pixel art image
 // ---------------------------------------------------------------------------
 
@@ -178,6 +220,8 @@ export default function Vacoweeper() {
   const [hitGoldenRetriever, setHitGoldenRetriever] = useState(false)
   const [firstClick, setFirstClick] = useState(true)
   const [round, setRound] = useState(1)
+  const [gasBombAvailable, setGasBombAvailable] = useState(true)
+  const [gasBombMode, setGasBombMode] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressTriggeredRef = useRef(false)
@@ -192,8 +236,12 @@ export default function Vacoweeper() {
     setTime(0)
     setFirstClick(true)
     setHitGoldenRetriever(false)
+    setGasBombAvailable(true)
+    setGasBombMode(false)
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = null
+    playMoo()
+    haptic([30, 50, 30])
   }, [createBoard])
 
   const initBoardWithRound = useCallback(() => {
@@ -307,6 +355,7 @@ export default function Vacoweeper() {
       longPressTriggeredRef.current = false
       longPressRef.current = setTimeout(() => {
         longPressTriggeredRef.current = true
+        haptic([15, 30, 15])
         if (gameState === "won" || gameState === "lost") return
         const cell = board[r][c]
         if (cell.state === "revealed") return
@@ -326,9 +375,36 @@ export default function Vacoweeper() {
   const handleCellClickWrapper = useCallback(
     (r: number, c: number) => {
       if (longPressTriggeredRef.current) { longPressTriggeredRef.current = false; return }
+      haptic()
+      // Gas bomb mode: safely reveal 3x3 area
+      if (gasBombMode && gasBombAvailable) {
+        if (gameState === "won" || gameState === "lost") return
+        if (gameState === "idle") setGameState("playing")
+        setGasBombAvailable(false)
+        setGasBombMode(false)
+        haptic([20, 40, 20, 40, 60])
+        const newBoard = board.map((row) => row.map((cell) => ({ ...cell })))
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr, nc = c + dc
+            if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols) {
+              const target = newBoard[nr][nc]
+              if (target.state === "hidden" && !target.isMine) {
+                revealCell(newBoard, nr, nc)
+              }
+            }
+          }
+        }
+        setBoard(newBoard)
+        // Check win
+        const totalSafe = config.rows * config.cols - config.mines
+        const revealed = newBoard.flat().filter((c) => c.state === "revealed" && !c.isMine).length
+        if (revealed === totalSafe) setGameState("won")
+        return
+      }
       handleCellClick(r, c)
     },
-    [handleCellClick]
+    [handleCellClick, gasBombMode, gasBombAvailable, board, gameState, config, revealCell]
   )
 
   // Derived state
@@ -413,7 +489,7 @@ export default function Vacoweeper() {
             {(["easy", "medium", "hard"] as Difficulty[]).map((d) => (
               <button
                 key={d}
-                onClick={() => setDifficulty(d)}
+                onClick={() => { haptic(); setDifficulty(d) }}
                 className="relative flex-1 py-2 font-mono text-xs tracking-[0.2em] uppercase cursor-pointer"
                 style={{
                   background: "transparent",
@@ -442,7 +518,7 @@ export default function Vacoweeper() {
             {/* Vaco face */}
             <div className="flex items-center justify-center py-2">
               <button
-                onClick={initBoardWithRound}
+                onClick={() => { haptic([20, 30, 20]); initBoardWithRound() }}
                 className="relative cursor-pointer flex items-center justify-center"
                 style={{ background: "transparent", border: `1px solid ${borderW}`, padding: "4px" }}
                 aria-label="Reset game"
@@ -461,10 +537,51 @@ export default function Vacoweeper() {
             </div>
           </div>
 
-          {/* Game board — scrolls horizontally when grid exceeds panel width */}
+          {/* Gas Bomb power-up */}
+          <div className="flex items-center justify-center py-1.5 gap-3" style={{ borderBottom: `1px solid ${borderFaint}` }}>
+            <button
+              onClick={() => {
+                if (!gasBombAvailable || gameState === "won" || gameState === "lost") return
+                haptic(gasBombMode ? 8 : [15, 25, 15])
+                setGasBombMode((prev) => !prev)
+              }}
+              className="relative flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase cursor-pointer px-3 py-1.5"
+              style={{
+                background: gasBombMode ? "rgba(232,115,74,0.12)" : "transparent",
+                border: `1px solid ${gasBombAvailable ? (gasBombMode ? accent : borderW) : borderFaint}`,
+                color: gasBombAvailable ? (gasBombMode ? accent : "#E8E8E8") : "rgba(255,255,255,0.2)",
+                opacity: gasBombAvailable ? 1 : 0.4,
+                transition: "all 0.15s ease",
+              }}
+              disabled={!gasBombAvailable || gameState === "won" || gameState === "lost"}
+              aria-label="Gas Bomb: reveal 3x3 area safely"
+            >
+              <CornerBrackets color={gasBombMode ? accent : "rgba(255,255,255,0.1)"} size={4} thickness={1} offset={-2} />
+              <span style={{ fontSize: "14px", lineHeight: 1 }}>{"~"}</span>
+              <span>{"GAS BOMB"}</span>
+              {gasBombAvailable ? (
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: gasBombMode ? accent : "#4AE87A", boxShadow: gasBombMode ? `0 0 4px ${accent}` : "0 0 4px #4AE87A" }} />
+              ) : (
+                <span style={{ color: "rgba(255,255,255,0.2)" }}>{"USED"}</span>
+              )}
+            </button>
+            {gasBombMode && (
+              <span className="font-mono text-[9px] tracking-[0.15em] uppercase animate-pulse" style={{ color: accent }}>
+                {"TAP A CELL TO DEPLOY"}
+              </span>
+            )}
+          </div>
+
+          {/* Game board -- scrolls horizontally when grid exceeds panel width */}
           <div
             className="relative"
-            style={{ overflowX: "auto", overflowY: "hidden", width: "100%" }}
+            style={{
+              overflowX: "auto",
+              overflowY: "hidden",
+              width: "100%",
+              boxShadow: gasBombMode ? `inset 0 0 20px rgba(232,115,74,0.08)` : "none",
+              transition: "box-shadow 0.2s ease",
+            }}
           >
             <CornerBrackets color="rgba(232,115,74,0.3)" size={8} thickness={1} offset={4} />
 
@@ -486,7 +603,7 @@ export default function Vacoweeper() {
                   return (
                     <button
                       key={`${r}-${c}`}
-                      className="flex items-center justify-center cursor-pointer p-0 font-mono"
+                      className={`flex items-center justify-center p-0 font-mono ${gasBombMode ? "cursor-crosshair" : "cursor-pointer"}`}
                       style={{
                         width: `${CELL_SIZE}px`,
                         height: `${CELL_SIZE}px`,
@@ -541,7 +658,7 @@ export default function Vacoweeper() {
           {/* Footer hint */}
           <div className="flex items-center justify-center py-2" style={{ borderTop: `1px solid ${borderFaint}` }}>
             <span className="font-mono text-[9px] tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.2)" }}>
-              {"TAP TO REVEAL / LONG PRESS TO FLAG"}
+              {gasBombMode ? "GAS BOMB ARMED -- TAP TARGET CELL" : "TAP TO REVEAL / LONG PRESS TO FLAG"}
             </span>
           </div>
 
@@ -587,7 +704,7 @@ export default function Vacoweeper() {
                   {"ROUND "}{String(round).padStart(2, "0")}
                 </div>
                 <button
-                  onClick={initBoardWithRound}
+                  onClick={() => { haptic([20, 30, 20]); initBoardWithRound() }}
                   className="relative font-mono text-xs tracking-[0.2em] uppercase cursor-pointer px-6 py-2.5"
                   style={{
                     background: "transparent",
