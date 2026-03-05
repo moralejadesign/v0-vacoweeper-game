@@ -14,3 +14,15 @@ export const sharedResults = pgTable("shared_results", {
 
 export type SharedResult = typeof sharedResults.$inferSelect
 export type NewSharedResult = typeof sharedResults.$inferInsert
+
+export const scores = pgTable("scores", {
+  id: text("id").primaryKey(),
+  playerName: text("player_name").notNull(),
+  difficulty: text("difficulty").notNull(), // "easy" | "medium" | "hard"
+  time: integer("time").notNull(),
+  rank: text("rank").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export type Score = typeof scores.$inferSelect
+export type NewScore = typeof scores.$inferInsert

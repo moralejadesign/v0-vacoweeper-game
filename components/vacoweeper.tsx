@@ -10,10 +10,10 @@ import { motion, AnimatePresence } from "framer-motion"
 type CellState = "hidden" | "revealed" | "flagged"
 interface Cell {
   isMine: boolean
-  isBottle: boolean
   adjacentMines: number
   state: CellState
   treat: string
+  isHitMine?: boolean // the mine the player clicked on
 }
 
 type Difficulty = "easy" | "medium" | "hard"
@@ -69,6 +69,8 @@ const RANK_THRESHOLDS: { max: number; rank: string }[] = [
 const MAX_SCORES_PER_DIFFICULTY = 5
 const STORAGE_KEY = "vacoweeper-leaderboard"
 const ONBOARDING_KEY = "vacoweeper-onboarding-done"
+const PLAYER_NAME_KEY = "vacoweeper-player-name"
+const MAX_NAME_LENGTH = 20
 
 function getDogRank(time: number): string {
   return (RANK_THRESHOLDS.find((t) => time <= t.max) ?? RANK_THRESHOLDS[RANK_THRESHOLDS.length - 1]).rank
@@ -338,44 +340,44 @@ function ShareCard({
                         let borderColor = "rgba(255,255,255,0.1)"
                         let content = ""
                         let color = "transparent"
-                        if (cell.state === "revealed") {
-                          bg = cell.isMine ? "rgba(232,74,74,0.18)" : "rgba(255,255,255,0.02)"
-                          borderColor = cell.isMine ? "rgba(232,74,74,0.3)" : "rgba(255,255,255,0.04)"
-                          if (cell.isMine) {
-                            content = "×"
-                            color = "#E84A4A"
-                          } else if (cell.adjacentMines > 0) {
-                            content = String(cell.adjacentMines)
-                            color = NUMBER_COLORS[cell.adjacentMines] || "#E8E8E8"
-                          } else {
-                            content = cell.treat
-                            color = "rgba(255,255,255,0.08)"
-                          }
-                        } else if (cell.state === "flagged") {
-                          bg = "rgba(232,115,74,0.12)"
-                          borderColor = "rgba(232,115,74,0.35)"
-                          content = "▶"
-                          color = "#E8734A"
-                        }
-                        return (
-                          <td
-                            key={c}
-                            style={{
-                              width: cellPx,
-                              height: cellPx,
-                              background: bg,
-                              border: `1px solid ${borderColor}`,
-                              fontSize,
-                              color,
-                              textAlign: "center",
-                              verticalAlign: "middle",
-                              padding: 0,
-                              lineHeight: "1",
-                            }}
-                          >
-                            {content}
-                          </td>
-                        )
+                          if (cell.state === "revealed") {
+                                  bg = cell.isMine ? "rgba(232,74,74,0.18)" : "rgba(255,255,255,0.02)"
+                                  borderColor = cell.isMine ? "rgba(232,74,74,0.3)" : "rgba(255,255,255,0.04)"
+                                  if (cell.isMine) {
+                                    content = "×"
+                                    color = "#E84A4A"
+                                  } else if (cell.adjacentMines > 0) {
+                                    content = String(cell.adjacentMines)
+                                    color = NUMBER_COLORS[cell.adjacentMines] || "#E8E8E8"
+                                  } else {
+                                    content = cell.treat
+                                    color = "rgba(255,255,255,0.08)"
+                                  }
+                                } else if (cell.state === "flagged") {
+                                  bg = "rgba(232,115,74,0.12)"
+                                  borderColor = "rgba(232,115,74,0.35)"
+                                  content = "▶"
+                                  color = "#E8734A"
+                                }
+                                return (
+                                  <td
+                                    key={c}
+                                    style={{
+                                      width: cellPx,
+                                      height: cellPx,
+                                      background: bg,
+                                      border: `1px solid ${borderColor}`,
+                                      fontSize,
+                                      color,
+                                      textAlign: "center",
+                                      verticalAlign: "middle",
+                                      padding: 0,
+                                      lineHeight: "1",
+                                    }}
+                                  >
+                                    {content}
+                                  </td>
+                                )
                       })}
                     </tr>
                   ))}
@@ -722,7 +724,6 @@ function Onboarding({ onDone }: { onDone: () => void }) {
                 <div className="flex flex-col gap-3 w-full text-left" style={{ maxWidth: 240 }}>
                   {([
                     { icon: "~", label: "GAS BOMB", desc: "Reveals a 3×3 area safely. One use per game!" },
-                    { icon: "B", label: "LUCKY BOTTLE", desc: "A hidden bonus tile on the board." },
                   ] as const).map(({ icon, label, desc }) => (
                     <div key={label} className="flex items-start gap-3">
                       <div style={{ width: 22, height: 22, background: "rgba(232,115,74,0.12)", border: `1px solid ${accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: accent, flexShrink: 0, fontFamily: "monospace", fontWeight: "bold" }}>{icon}</div>
@@ -777,11 +778,112 @@ function Onboarding({ onDone }: { onDone: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
+// Name entry screen
+// ---------------------------------------------------------------------------
+
+function NameEntry({ onDone }: { onDone: (name: string) => void }) {
+  const [name, setName] = useState("")
+  const accent = "#E8734A"
+  const trimmed = name.trim()
+  const isValid = trimmed.length > 0 && trimmed.length <= MAX_NAME_LENGTH
+
+  const handleSubmit = () => {
+    if (!isValid) return
+    try { localStorage.setItem(PLAYER_NAME_KEY, trimmed) } catch {}
+    onDone(trimmed)
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter") handleSubmit()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name])
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      style={{ background: "#0a0a0a" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="relative flex flex-col items-center gap-5 p-8 w-full"
+        style={{ maxWidth: 320, border: `1px solid ${accent}44`, background: "#0a0a0a" }}
+        initial={{ scale: 0.88, opacity: 0, y: 24 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.88, opacity: 0, y: 24 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+      >
+        <CornerBrackets color={accent} size={12} thickness={1} offset={-4} squares />
+
+        <VacoFace expression="idle" size={56} />
+
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span className="font-mono text-sm font-bold tracking-[0.2em] uppercase" style={{ color: "#E8E8E8" }}>
+            WHAT&apos;S YOUR NAME?
+          </span>
+          <span className="font-mono text-[10px] tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            SHOWN ON THE GLOBAL LEADERBOARD
+          </span>
+        </div>
+
+        <div className="relative w-full">
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            maxLength={MAX_NAME_LENGTH}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="ENTER NAME..."
+            className="w-full font-mono text-sm tracking-[0.1em] uppercase bg-transparent outline-none text-center py-2 px-3"
+            style={{
+              border: `1px solid ${isValid ? accent : "rgba(255,255,255,0.15)"}`,
+              color: "#E8E8E8",
+              caretColor: accent,
+              transition: "border-color 0.15s",
+            }}
+          />
+          <span
+            className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[9px]"
+            style={{ color: "rgba(255,255,255,0.25)" }}
+          >
+            {trimmed.length}/{MAX_NAME_LENGTH}
+          </span>
+        </div>
+
+        <motion.button
+          onClick={handleSubmit}
+          disabled={!isValid}
+          className="relative w-full font-mono text-xs tracking-[0.2em] uppercase cursor-pointer py-2.5"
+          style={{
+            background: "transparent",
+            border: `1px solid ${isValid ? accent : "rgba(255,255,255,0.1)"}`,
+            color: isValid ? accent : "rgba(255,255,255,0.2)",
+            transition: "border-color 0.15s, color 0.15s",
+          }}
+          whileHover={isValid ? { scale: 1.03, backgroundColor: accent, color: "#0a0a0a" } : undefined}
+          whileTap={isValid ? { scale: 0.97 } : undefined}
+        >
+          {isValid && <CornerBrackets color={accent} size={5} thickness={1} offset={-3} />}
+          LET&apos;S GO
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main game component
 // ---------------------------------------------------------------------------
 
 export default function Vacoweeper() {
   const [audioUnlocked, setAudioUnlocked] = useState(false)
+  const [playerName, setPlayerName] = useState<string | null>(null)
+  const [showNameEntry, setShowNameEntry] = useState(false)
   const [difficulty, setDifficulty] = useState<Difficulty>("easy")
   const config = CONFIGS[difficulty]
 
@@ -790,7 +892,6 @@ export default function Vacoweeper() {
     const board: Cell[][] = Array.from({ length: config.rows }, () =>
       Array.from({ length: config.cols }, () => ({
         isMine: false,
-        isBottle: false,
         adjacentMines: 0,
         state: "hidden" as CellState,
         treat: TREATS[Math.floor(Math.random() * TREATS.length)],
@@ -805,13 +906,6 @@ export default function Vacoweeper() {
         board[r][c].isMine = true
         placed++
       }
-    }
-
-    // Bottle
-    const safeCells = board.flatMap((row, r) => row.map((cell, c) => (!cell.isMine ? { r, c } : null)).filter(Boolean)) as { r: number; c: number }[]
-    if (safeCells.length > 0) {
-      const bt = safeCells[Math.floor(Math.random() * safeCells.length)]
-      board[bt.r][bt.c].isBottle = true
     }
 
     // Adjacent mines
@@ -841,6 +935,9 @@ const [firstClick, setFirstClick] = useState(true)
   const [gasBombMode, setGasBombMode] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardData>({ easy: [], medium: [], hard: [] })
+  const [scoreTab, setScoreTab] = useState<"local" | "global">("local")
+  const [globalScores, setGlobalScores] = useState<{ playerName: string; time: number; rank: string }[]>([])
+  const [globalLoading, setGlobalLoading] = useState(false)
   const [lastRank, setLastRank] = useState<string | null>(null)
   const [showShareCard, setShowShareCard] = useState(false)
   const [shareMessage, setShareMessage] = useState("")
@@ -896,6 +993,17 @@ const [firstClick, setFirstClick] = useState(true)
   // Load leaderboard on mount
   useEffect(() => { setLeaderboard(loadLeaderboard()) }, [])
 
+  // Load global scores when tab becomes visible
+  useEffect(() => {
+    if (!showLeaderboard || scoreTab !== "global") return
+    setGlobalLoading(true)
+    fetch(`/api/scores?difficulty=${difficulty}`)
+      .then((r) => r.json())
+      .then((data) => setGlobalScores(data.scores ?? []))
+      .catch(() => setGlobalScores([]))
+      .finally(() => setGlobalLoading(false))
+  }, [showLeaderboard, scoreTab, difficulty])
+
   // Allow pressing Enter to dismiss the splash screen
   useEffect(() => {
     if (audioUnlocked) return
@@ -912,13 +1020,28 @@ const [firstClick, setFirstClick] = useState(true)
     return () => window.removeEventListener("keydown", onKey)
   }, [audioUnlocked])
 
-  // Show onboarding on first visit (after audio unlock)
+  // Load player name and show name entry if not set (after audio unlock)
   useEffect(() => {
     if (!audioUnlocked) return
     try {
+      const saved = localStorage.getItem(PLAYER_NAME_KEY)
+      if (saved) {
+        setPlayerName(saved)
+      } else {
+        setShowNameEntry(true)
+      }
+    } catch {
+      setShowNameEntry(true)
+    }
+  }, [audioUnlocked])
+
+  // Show onboarding on first visit (after name is set)
+  useEffect(() => {
+    if (!playerName) return
+    try {
       if (!localStorage.getItem(ONBOARDING_KEY)) setShowOnboarding(true)
     } catch {}
-  }, [audioUnlocked])
+  }, [playerName])
 
   // Record score on win
   useEffect(() => {
@@ -926,10 +1049,19 @@ const [firstClick, setFirstClick] = useState(true)
       const entry = saveScore(difficulty, time)
       setLeaderboard(loadLeaderboard())
       setLastRank(entry.rank)
+      // Post to global leaderboard if player has a name
+      if (playerName) {
+        fetch("/api/scores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerName, difficulty, time, rank: entry.rank }),
+        }).catch(() => {})
+      }
     } else if (gameState !== "won") {
       setLastRank(null)
       setShowShareCard(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, time, difficulty])
 
   // Timer
@@ -966,33 +1098,31 @@ const [firstClick, setFirstClick] = useState(true)
 
       let newBoard = board.map((row) => row.map((cell) => ({ ...cell })))
 
-      // First click safety
+      // First click safety: guarantee the clicked cell AND its 8 neighbors are mine-free.
+      // createBoard() already computes adjacentMines, so no need to recalculate here.
       if (firstClick) {
         setFirstClick(false)
-        while (newBoard[r][c].isMine) {
+        const isSafeZone = (b: Cell[][]) => {
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const nr = r + dr, nc = c + dc
+              if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols && b[nr][nc].isMine) return false
+            }
+          }
+          return true
+        }
+        while (!isSafeZone(newBoard)) {
           newBoard = createBoard()
         }
-        // Recalculate adjacent mines
-        for (let rr = 0; rr < config.rows; rr++) {
-          for (let cc = 0; cc < config.cols; cc++) {
-            if (newBoard[rr][cc].isMine) continue
-            let count = 0
-            for (let dr = -1; dr <= 1; dr++)
-              for (let dc = -1; dc <= 1; dc++) {
-                const nr = rr + dr, nc = cc + dc
-                if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols && newBoard[nr][nc].isMine) count++
-              }
-            newBoard[rr][cc].adjacentMines = count
-          }
-        }
-        setGameState("playing")
-      } else if (gameState === "idle") {
         setGameState("playing")
       }
+      // Note: the case firstClick===false && gameState==="idle" is unreachable in practice,
+      // since both are set together on the first click. No else branch needed.
 
       if (newBoard[r][c].isMine) {
-        // Reveal all mines
+        // Reveal all mines and mark the one the player hit
         newBoard.forEach((row) => row.forEach((cell) => { if (cell.isMine) cell.state = "revealed" }))
+        newBoard[r][c].isHitMine = true
         setBoard(newBoard)
         setGameState("lost")
         playLoss()
@@ -1004,7 +1134,7 @@ const [firstClick, setFirstClick] = useState(true)
 
       // Check win
       const totalSafe = config.rows * config.cols - config.mines
-      const revealed = newBoard.flat().filter((c) => c.state === "revealed" && !c.isMine).length
+      const revealed = newBoard.flat().filter((cell) => cell.state === "revealed" && !cell.isMine).length
       if (revealed === totalSafe) { setGameState("won"); playWin() }
     },
     [board, gameState, firstClick, createBoard, config, revealCell]
@@ -1018,12 +1148,14 @@ const [firstClick, setFirstClick] = useState(true)
       const cell = board[r][c]
       if (cell.state === "revealed") return
       haptic([10, 20, 10])
-      if (gameState === "idle") setGameState("playing")
+      // Flagging before the first real click should NOT start the timer.
+      // Only start playing (and timer) if the player has already clicked a cell.
+      if (gameState === "idle" && !firstClick) setGameState("playing")
       const newBoard = board.map((row) => row.map((cell) => ({ ...cell })))
       newBoard[r][c].state = newBoard[r][c].state === "flagged" ? "hidden" : "flagged"
       setBoard(newBoard)
     },
-    [board, gameState]
+    [board, gameState, firstClick]
   )
 
   // Touch long-press
@@ -1036,13 +1168,14 @@ const [firstClick, setFirstClick] = useState(true)
         if (gameState === "won" || gameState === "lost") return
         const cell = board[r][c]
         if (cell.state === "revealed") return
-        if (gameState === "idle") setGameState("playing")
+        // Same as right-click: only start timer if the player has already clicked a cell.
+        if (gameState === "idle" && !firstClick) setGameState("playing")
         const newBoard = board.map((row) => row.map((cell) => ({ ...cell })))
         newBoard[r][c].state = newBoard[r][c].state === "flagged" ? "hidden" : "flagged"
         setBoard(newBoard)
       }, 400)
     },
-    [board, gameState]
+    [board, gameState, firstClick]
   )
 
   const handleTouchEnd = useCallback(() => {
@@ -1057,6 +1190,8 @@ const [firstClick, setFirstClick] = useState(true)
       if (gasBombMode && gasBombAvailable) {
         if (gameState === "won" || gameState === "lost") return
         if (gameState === "idle") setGameState("playing")
+        // Mark first click as done so subsequent clicks don't regenerate the board
+        setFirstClick(false)
         setGasBombAvailable(false)
         setGasBombMode(false)
         haptic([20, 40, 20, 40, 60])
@@ -1100,6 +1235,19 @@ const [firstClick, setFirstClick] = useState(true)
   const borderFaint = "rgba(255,255,255,0.06)"
 
   const boardKey = `${difficulty}-${round}`
+
+  if (showNameEntry) {
+    return (
+      <AnimatePresence>
+        <NameEntry
+          onDone={(name) => {
+            setPlayerName(name)
+            setShowNameEntry(false)
+          }}
+        />
+      </AnimatePresence>
+    )
+  }
 
   if (!audioUnlocked) {
     return (
@@ -1238,6 +1386,19 @@ const [firstClick, setFirstClick] = useState(true)
                   {gameState === "idle" ? "READY" : gameState === "playing" ? "LIVE" : gameState === "won" ? "CLEAR" : "FAIL"}
                 </span>
               </div>
+              {/* Player name */}
+              {playerName && (
+                <motion.button
+                  onClick={() => setShowNameEntry(true)}
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase cursor-pointer px-2 py-0.5 max-w-[80px] truncate"
+                  style={{ background: "transparent", border: `1px solid ${borderFaint}`, color: "rgba(255,255,255,0.35)" }}
+                  whileHover={{ scale: 1.05, borderColor: accent, color: accent }}
+                  whileTap={{ scale: 0.95 }}
+                  title={`Playing as ${playerName} — click to change`}
+                >
+                  {playerName}
+                </motion.button>
+              )}
               {/* Help button */}
               <motion.button
                 onClick={() => setShowOnboarding(true)}
@@ -1412,7 +1573,7 @@ const [firstClick, setFirstClick] = useState(true)
                     const isRevealed = cell.state === "revealed"
                     const isFlagged = cell.state === "flagged"
                     const isMine = cell.isMine
-                    const isHitMine = isRevealed && isMine
+                    const isHitMine = cell.isHitMine === true
 
                     return (
                       <motion.button
@@ -1425,24 +1586,33 @@ const [firstClick, setFirstClick] = useState(true)
                           fontWeight: "bold",
                           lineHeight: 1,
                           background: isHitMine
-                            ? "rgba(232,74,74,0.15)"
+                            ? "rgba(232,74,74,0.45)"
+                            : isRevealed && isMine
+                              ? "rgba(232,74,74,0.15)"
+                              : isRevealed
+                                ? "rgba(255,255,255,0.02)"
+                                : "rgba(255,255,255,0.05)",
+                          border: isHitMine
+                            ? `1px solid rgba(232,74,74,0.8)`
                             : isRevealed
-                              ? "rgba(255,255,255,0.02)"
-                              : "rgba(255,255,255,0.05)",
-                          border: isRevealed
-                            ? `1px solid rgba(255,255,255,0.04)`
-                            : `1px solid rgba(255,255,255,0.1)`,
+                              ? `1px solid rgba(255,255,255,0.04)`
+                              : `1px solid rgba(255,255,255,0.1)`,
                           color: NUMBER_COLORS[cell.adjacentMines] || "#E8E8E8",
+                          boxShadow: isHitMine ? `0 0 8px rgba(232,74,74,0.6)` : undefined,
                         }}
                         animate={{
                           backgroundColor: isHitMine
-                            ? "rgba(232,74,74,0.15)"
+                            ? "rgba(232,74,74,0.45)"
+                            : isRevealed && isMine
+                              ? "rgba(232,74,74,0.15)"
+                              : isRevealed
+                                ? "rgba(255,255,255,0.02)"
+                                : "rgba(255,255,255,0.05)",
+                          borderColor: isHitMine
+                            ? "rgba(232,74,74,0.8)"
                             : isRevealed
-                              ? "rgba(255,255,255,0.02)"
-                              : "rgba(255,255,255,0.05)",
-                          borderColor: isRevealed
-                            ? "rgba(255,255,255,0.04)"
-                            : "rgba(255,255,255,0.1)",
+                              ? "rgba(255,255,255,0.04)"
+                              : "rgba(255,255,255,0.1)",
                         }}
                         transition={{ duration: 0.15 }}
                         whileTap={!isRevealed ? { scale: 0.9 } : undefined}
@@ -1472,30 +1642,28 @@ const [firstClick, setFirstClick] = useState(true)
                           {isRevealed && isMine && (
                             <motion.span
                               key="mine"
-                              style={{ color: "#E84A4A" }}
+                              style={{ color: isHitMine ? "#FF0000" : "#E84A4A", fontSize: isHitMine ? "1.3em" : undefined }}
                               initial={{ scale: 0 }}
-                              animate={{ scale: [0, 1.3, 1] }}
+                              animate={isHitMine ? { scale: [0, 1.5, 1.2] } : { scale: [0, 1.3, 1] }}
                               transition={{ duration: 0.3, times: [0, 0.6, 1] }}
                             >
                               {"X"}
                             </motion.span>
                           )}
-                          {isRevealed && !isMine && (
-                            <motion.span
-                              key="content"
-                              initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.15 }}
-                            >
-                              {cell.adjacentMines > 0 ? (
-                                <span>{cell.adjacentMines}</span>
-                              ) : cell.isBottle ? (
-                                <span style={{ color: accent }}>{"B"}</span>
-                              ) : (
-                                <span style={{ color: "rgba(255,255,255,0.06)" }}>{cell.treat}</span>
-                              )}
-                            </motion.span>
-                          )}
+                               {isRevealed && !isMine && (
+                                            <motion.span
+                                              key="content"
+                                              initial={{ opacity: 0, scale: 0.5 }}
+                                              animate={{ opacity: 1, scale: 1 }}
+                                              transition={{ duration: 0.15 }}
+                                            >
+                                              {cell.adjacentMines > 0 ? (
+                                                <span>{cell.adjacentMines}</span>
+                                              ) : (
+                                                <span style={{ color: "rgba(255,255,255,0.06)" }}>{cell.treat}</span>
+                                              )}
+                                            </motion.span>
+                                          )}
                         </AnimatePresence>
                       </motion.button>
                     )
@@ -1542,52 +1710,143 @@ const [firstClick, setFirstClick] = useState(true)
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.25, ease: "easeInOut" }}
               >
-                <div className="px-3 py-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase font-bold" style={{ color: "#E8E8E8" }}>
-                      {"HIGH SCORES"}
-                    </span>
-                    <span className="font-mono text-[9px] tracking-[0.1em] uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
-                      {"TOP 5 PER MODE"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["easy", "medium", "hard"] as Difficulty[]).map((d) => (
-                      <div key={d} className="relative" style={{ border: `1px solid ${borderFaint}`, padding: "6px" }}>
-                        <CornerBrackets color={d === difficulty ? accent : "rgba(255,255,255,0.06)"} size={4} thickness={1} offset={-1} />
-                        <span
-                          className="block font-mono text-[9px] tracking-[0.15em] uppercase text-center mb-1.5"
-                          style={{ color: d === difficulty ? accent : "rgba(255,255,255,0.35)" }}
-                        >
-                          {d.toUpperCase()}
-                        </span>
-                        {leaderboard[d].length === 0 ? (
-                          <span className="block font-mono text-[8px] text-center" style={{ color: "rgba(255,255,255,0.15)" }}>
-                            {"NO RUNS YET"}
-                          </span>
-                        ) : (
-                          leaderboard[d].map((entry, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between py-0.5"
-                              style={{ borderTop: i > 0 ? `1px solid rgba(255,255,255,0.04)` : "none" }}
-                            >
-                              <span className="font-mono text-[8px]" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "rgba(255,255,255,0.3)" }}>
-                                {`${i + 1}.`}
-                              </span>
-                              <span className="font-mono text-[8px] truncate mx-1" style={{ color: "rgba(255,255,255,0.5)", maxWidth: "60px" }}>
-                                {entry.rank}
-                              </span>
-                              <span className="font-mono text-[9px] font-bold" style={{ color: "#E8E8E8" }}>
-                                {`${entry.time}s`}
-                              </span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                {/* Tab bar */}
+                <div className="flex w-full" style={{ borderBottom: `1px solid ${borderFaint}` }}>
+                  {(["local", "global"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setScoreTab(tab)}
+                      className="flex-1 py-1.5 font-mono text-[9px] tracking-[0.2em] uppercase cursor-pointer"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        borderBottom: scoreTab === tab ? `2px solid ${accent}` : "2px solid transparent",
+                        color: scoreTab === tab ? accent : "rgba(255,255,255,0.3)",
+                        transition: "color 0.15s, border-color 0.15s",
+                      }}
+                    >
+                      {tab === "local" ? "LOCAL" : "GLOBAL"}
+                    </button>
+                  ))}
                 </div>
+
+                {/* LOCAL tab */}
+                {scoreTab === "local" && (
+                  <div className="px-3 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-[10px] tracking-[0.2em] uppercase font-bold" style={{ color: "#E8E8E8" }}>
+                        {"HIGH SCORES"}
+                      </span>
+                      <span className="font-mono text-[9px] tracking-[0.1em] uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
+                        {"TOP 5 PER MODE"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["easy", "medium", "hard"] as Difficulty[]).map((d) => (
+                        <div key={d} className="relative" style={{ border: `1px solid ${borderFaint}`, padding: "6px" }}>
+                          <CornerBrackets color={d === difficulty ? accent : "rgba(255,255,255,0.06)"} size={4} thickness={1} offset={-1} />
+                          <span
+                            className="block font-mono text-[9px] tracking-[0.15em] uppercase text-center mb-1.5"
+                            style={{ color: d === difficulty ? accent : "rgba(255,255,255,0.35)" }}
+                          >
+                            {d.toUpperCase()}
+                          </span>
+                          {leaderboard[d].length === 0 ? (
+                            <span className="block font-mono text-[8px] text-center" style={{ color: "rgba(255,255,255,0.15)" }}>
+                              {"NO RUNS YET"}
+                            </span>
+                          ) : (
+                            leaderboard[d].map((entry, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center justify-between py-0.5"
+                                style={{ borderTop: i > 0 ? `1px solid rgba(255,255,255,0.04)` : "none" }}
+                              >
+                                <span className="font-mono text-[8px]" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "rgba(255,255,255,0.3)" }}>
+                                  {`${i + 1}.`}
+                                </span>
+                                <span className="font-mono text-[8px] truncate mx-1" style={{ color: "rgba(255,255,255,0.5)", maxWidth: "60px" }}>
+                                  {entry.rank}
+                                </span>
+                                <span className="font-mono text-[9px] font-bold" style={{ color: "#E8E8E8" }}>
+                                  {`${entry.time}s`}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* GLOBAL tab */}
+                {scoreTab === "global" && (
+                  <div className="px-3 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-[10px] tracking-[0.2em] uppercase font-bold" style={{ color: "#E8E8E8" }}>
+                        {"GLOBAL TOP 10"}
+                      </span>
+                      <span className="font-mono text-[9px] tracking-[0.1em] uppercase" style={{ color: accent }}>
+                        {difficulty.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {globalLoading ? (
+                      <div className="flex justify-center py-4">
+                        <motion.span
+                          className="font-mono text-[9px] tracking-[0.2em] uppercase"
+                          style={{ color: "rgba(255,255,255,0.25)" }}
+                          animate={{ opacity: [0.3, 1, 0.3] }}
+                          transition={{ duration: 1.2, repeat: Infinity }}
+                        >
+                          LOADING...
+                        </motion.span>
+                      </div>
+                    ) : globalScores.length === 0 ? (
+                      <div className="flex flex-col items-center py-4 gap-1">
+                        <span className="font-mono text-[9px] tracking-[0.1em] uppercase" style={{ color: "rgba(255,255,255,0.2)" }}>
+                          NO SCORES YET
+                        </span>
+                        <span className="font-mono text-[8px]" style={{ color: "rgba(255,255,255,0.12)" }}>
+                          BE THE FIRST TO WIN ON {difficulty.toUpperCase()}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-0">
+                        {globalScores.map((entry, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 py-1"
+                            style={{
+                              borderTop: i > 0 ? `1px solid rgba(255,255,255,0.04)` : "none",
+                              background: entry.playerName === playerName ? "rgba(232,115,74,0.05)" : "transparent",
+                            }}
+                          >
+                            <span
+                              className="font-mono text-[9px] w-5 shrink-0 text-right"
+                              style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "rgba(255,255,255,0.3)" }}
+                            >
+                              {i + 1}.
+                            </span>
+                            <span
+                              className="font-mono text-[9px] truncate flex-1"
+                              style={{ color: entry.playerName === playerName ? accent : "rgba(255,255,255,0.6)" }}
+                            >
+                              {entry.playerName}
+                            </span>
+                            <span className="font-mono text-[8px] shrink-0" style={{ color: "rgba(255,255,255,0.3)" }}>
+                              {entry.rank}
+                            </span>
+                            <span className="font-mono text-[9px] font-bold shrink-0" style={{ color: "#E8E8E8" }}>
+                              {entry.time}s
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
